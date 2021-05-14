@@ -1,3 +1,3 @@
 # Statistics
 
-This repository contains some of my notes on topic in statistics (Bayesian estimation, EM algorithm, etc.)
+This repository stores some of my notes on topics in statistics (Bayesian estimation, EM algorithm, etc.)
