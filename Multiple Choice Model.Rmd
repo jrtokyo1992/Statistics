@@ -1,0 +1,124 @@
+---
+title: "Multiple Choice Model"
+author: Lu XU
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 3
+     fig_width: 4.5
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Multinomial Regression
+Suppose you are making choice $y= 1,2,,,,J$:choose the transportation tool (from bus, subway, taxi, and etc..), choose a job (from teacher, doctor, and etc..).and you, as individual $i$,has the characteristic variables $X_i$.
+<p>We use stochastic utility to model the choice. The utility of an individual making choice $j$ is 
+    $$
+    U_{ij}= x'_i\beta_j+\epsilon_{ij} 
+    $$
+
+This expression implies that an individual's $X_i$ does not change under different choices.(We can think of the $X_i$ as $i$'s characteristic, e.g. income, age, gender and etc.) Instead, under different choices, the effect of $X_i$ on the utility is different. </p>
+It is natural to the write down the probability that an individual $i$ chooses $j$.
+$$
+pr(y_i=j|x_i)= pr ( x'_i\beta_j+\epsilon_{ij} \ge x'_i\beta_k+\epsilon_{ik}, \forall k )=pr ( x'_i\beta_j-x'_i\beta_k \ge \epsilon_{ik}-\epsilon_{ij}, \forall k )
+$$
+We want to solve out the expression of this probability. To solve it, we need to make assumption on the distribution of $\epsilon$. we assume that $\epsilon$ are i.i.d and follows a type 1 extreme value distribution. $$
+f(\epsilon)= e^{-\epsilon}e^{-e^{-\epsilon}}, \quad F(\epsilon)=e^{-e^{-\epsilon}}
+$$
+After some calculation it is easy to get (show it!!)
+$$
+pr(y_i=j|x_i)= \frac{exp(x'_i\beta_j)}{\sum_{k=1}^{J}exp(x'_i \beta_k)}
+$$
+To see this, we give an example where $J=3$.Therefore 
+$$pr(y=1|x)=pr\left(\epsilon_2<x'(\beta_1-\beta_2)+\epsilon_1,\epsilon_3<x'(\beta_1-\beta_3)+\epsilon_1\right)$$
+$$=\int{ e^{-\epsilon_1}e^{-e^{-\epsilon_1}} \int_{-\infty}^{x'(\beta_1-\beta_2)+\epsilon_1}{ e^{-\epsilon_2}e^{-e^{-\epsilon_2}}   \int_{-\infty}^{x'(\beta_1-\beta_3)+\epsilon_1}{ e^{-\epsilon_3}e^{-e^{-\epsilon_3}}  } d\epsilon_3     }d\epsilon_2  }d\epsilon_1$$
+$$=\int{e^{-\epsilon_1}e^{-e^{-\epsilon_1}}e^{-e^{-x'(\beta_1-\beta_2)-\epsilon_1}}e^{-e^{-x'(\beta_1-\beta_3)-\epsilon_1}}}d\epsilon_1$$
+$$=\int{exp\left[ -e^{-\epsilon_1}\left( 1+e^{-x'(\beta_1-\beta_2)}
++e^{-x'(\beta_1-\beta_3)} \right)       \right]}d(-e^{-\epsilon_1})$$
+$$=\frac{1}{\left( 1+e^{-x'(\beta_1-\beta_2)}+e^{-x'(\beta_1-\beta_3)} \right)}=\frac{e^{x'\beta_1}}{\left( e^{x'\beta_1}+e^{x'\beta_2}+e^{x'\beta_3} \right)}$$
+It is obvious that the not all $\beta$ can be identified. In fact, if we add each $\beta_k$ by a same constant,the result does not change. Therefore, we can assume that $\beta_1=0$ (i.e., treat $j=1$ as a baseline group). Therefore we have 
+$$
+pr(y_i = j|x_j)=\begin{cases}
+\frac{1}{1+\sum_{k=2}^{J}exp(x'_i \beta_k)} & (j=1)\\
+\frac{exp(x'_i\beta_j)}{1+\sum_{k=1}^{J}exp(x'_i \beta_k)} & (Otherwise)
+\end{cases}
+$$
+Having constructed the probability function, we are ready to construct the ML function. 
+$$
+L_i(\beta_1,,,\beta_J)= \prod_{j=1}^{j=J}{{pr(y_i = j|x_j)}^{I(y_i=1)}}
+$$
+and we want to maximize the following 
+$$
+L(\beta_1,,,,\beta_J)= \prod_{i=1}^{j=n}{L_i(\beta_1,,,\beta_J)}
+$$
+
+After the the estimation, we need to find a rule to classify. Again, you can define a loss function, and compute the rule, which minimize the loss. Or, a simple way is to choose the class that has the highest probability.
+
+One problem with this estimation is that, it is slow: you have to estimate all the $\beta_1,..\beta_J$ jointly.
+
+
+# Distributed Multiple Regression 
+Through a well-known relationship between Poisson and multinomial distributions, it turns out that multinomial logistic regression coefficients will be, for all practical purposes, similar to those that we can get through independent estimation for each of the log-linear equations: 
+$$E(y_{ij}|x_i) = exp(x'_i \beta_j)$$
+Where $y_{ij}=1$ iff $y_i = j$. Therefore we can assume the following data generating process:
+$$y_{ij} \sim  Poisson(exp[x'_i \beta_j])$$
+
+Which means that the log-likelihood for individual $i$ is 
+$$\sum_{j=1}^{J}{\left(\left[exp(x'_i\beta_j) - y_{ij}(x'_i \beta_j)\right] 1\{ y_{ij}=1\}\right)}$$
+Therefore, the log-likelihood for the whole sample is
+$$\sum_{i=1}^{n}\sum_{j=1}^{J}{\left(\left[exp(x'_i\beta_j) - y_{ij}(x'_i \beta_j)\right] 1\{ y_{ij}=1\}\right)}
+= \sum_{j=1}^{J}\sum_{i=1}^{n}{\left(\left[exp(x'_i\beta_j) - y_{ij}(x'_i \beta_j)\right] 1\{ y_{ij}=1\}\right)}
+$$
+$$= \sum_{j=1}^{J} f(\beta_j)$$
+
+in which 
+$$f(\beta_j) = \sum_{i=1}^{n}{\left(\left[exp(x'_i\beta_j) - y_{ij}(x'_i \beta_j)\right] 1\{ y_{ij}=1\}\right)}$$
+This implies that we can estimate each $\beta_j$ separately.
+
+Of course, one may be confused about the poisson regression, since it describes the data generating process of count data, while here $y_{ij}$ takes either 0 or 1. i.e., the model is 'incorrect'. However, research has demonstrated that the two models are practically interchangeable, especially for prediction purposes. 
+
+# Conditional Logit Model (Mc Fadden)
+The multiple logit model simply assume that $x$ does not change with the choice. Therefore, often times, in the multiple logit model, $x$ often represents a set of individual characteristics, which does not change with specific choices. But this is not always the case. For example, when we choose from means of transportation, the time we spend on transportation matters. For the same person, he may spend different times on different means of transportation. This implies that the variable 'transportation time', a variable that may affects individual's choice, actually changes with the choice. Therefore, we write such variables are $z_{ij}$, since they changes with individuals and choices. That is 
+$$U_{ij}= z'_{ij}\gamma +\epsilon_{ij}$$
+if we still assume that $\epsilon_{ij}$ follows extreme value distribution, then we still have
+$$pr(y_i=j|z_{ij})=\frac{exp(z'_{ij} \beta)}{\sum_{k=1}^{J}{exp(z'_{ik}\beta)}}$$
+One limitation of this model is that $\beta$ are same across the choices, meaning a variables under different choices have the same marginal effect on the utility, which may not be the true case.
+
+# Mixed Logit Model
+The mixed logit model is simply a mix of the conditional logit and the multiple logit model. To be specific, we have 
+$$ U_{ij}= x'_i\beta_j+z'_{ij}\gamma+\epsilon_{ij} $$
+The $pr(y_i=1|x_{i},z)$ still follows the expression in the previous examples.
+
+
+
+# Nested Logit Model
+Notice that in the above models, we all assume that $\epsilon_{ij}$ are $i.i.d$.that is, The unobservable factors that affects the utility of choosing plan $A$ is totally uncorrelated to the unobservable factors that affects the utility of choosing plan $B$. This assumption, however, may not be realistic, especially when the two plans looks very similar. For example, plan A is taking a red bus, while plan B is taking a blue bus.Since these two choices are very similar,  It is quite possible that some unobservable factors affecting the utility on plan A also affect the utility on plan B. Therefore, it may not be proper to simply assume that the $\epsilon_{ij}$ are independent. A more complicated structure is needed to describe the choice procedure. 
+<p> consider the following situation. Suppose you have four choices: bus $(11)$, subway$(12)$, car$(21)$, bike$(22)$, walk(23). Check the code. The first number of the two-digit code the denotes whether the the transportation is public or private. Denote the unobservable factors affecting the utility of these choices as $\epsilon_{11}$,  $\epsilon_{12}$, $\epsilon_{21}$, $\epsilon_{22}$, $\epsilon_{23}$(we have omitted the subscript for individuals). Specify the stochastic utility as
+    $$U_{jk}=x'_{jk}\beta + z'_j\gamma_j+\epsilon_{jk}, j=1,2, k=1,2,3$$
+    Intuitively, $( \epsilon_{11},  \epsilon_{12})$ is not correlated with $(\epsilon_{21}, \epsilon_{22}, \epsilon_{23})$ (since we can regard public transportation and private transportation as independent), but $\epsilon_{11}$,may be correlated with $\epsilon_{12}$; $(\epsilon_{21}, \epsilon_{22}, \epsilon_{23})$ may be correlated with each other. Denote the joint accumulative function of these error terms as $F(\epsilon_{11},\epsilon_{12},\epsilon_{21}, \epsilon_{22}, \epsilon_{23})$, it is easy to see that $G$ must have the following property:
+    $$F(\epsilon_{11},\epsilon_{12},\epsilon_{21}, \epsilon_{22}, \epsilon_{23})=F_1(\epsilon_{11},\epsilon_{12})F_2(\epsilon_{21}, \epsilon_{22}, \epsilon_{23})$$
+    $$F_1(\epsilon_{11},\epsilon_{12}) \ne f_{11}(\epsilon_{11})f_{12}(\epsilon_{12}),F_2(\epsilon_{21}, \epsilon_{22}, \epsilon_{23})\ne f_{21}(\epsilon_{21})f_{22}(\epsilon_{22})f_{23}(\epsilon_{23})$$
+In which $f_{..}$ is any function.This simply means that $F$ is separable into some $F_1$,which is a function of $\epsilon_{11},\epsilon{12}$, and  $F_2$, which is a function of $\epsilon_{21}, \epsilon_{22}, \epsilon_{23}$, while $F_1$ and $F_2$ are not separable.
+A candidate for $F$ is
+    $$F(\epsilon_{11},\epsilon_{12},\epsilon_{21}, \epsilon_{22}, \epsilon_{23})=e^{-{\left( \epsilon^{\tau_1}_{11}+\epsilon^{\tau_1}_{12}\right)}^{\frac{1}{\tau_1}}-{\left( \epsilon^{\tau_2}_{21}+\epsilon^{\tau_2}_{22}+\epsilon^{\tau_2}_{23}\right)}^{\frac{1}{\tau_2}}}$$
+    We have already specified the joint distribution of the error terms. Now we can write down the probability of choosing $(jk)$..(To be finished)
+    
+# Ordered Multiple Choice Model
+Sometimes, the choices we are faced with are ordered data. For example, satisfaction (not satisfied, so-so, satisfied.), the evaluation of bond (AAA,AA,A,B,C). Under this setting, it is natural to do the following setting. Suppose $y^*= x'\beta +\epsilon$,in which $\epsilon$ follows $N(0,\sigma^2)$ and 
+$$y_i =   \begin{cases}
+            0 \quad y^*\le r_0 \\
+            1 \quad r_0 \le y^*\le r_1\\
+            2 \quad r_1 \le y^*\le r_2\\
+            ..\\
+            K \quad r_{K-1} \le y^*\le r_K\\   
+        \end{cases}$$
+Then it is very easy to write $$p_k \equiv pr(y_i = k|x)=pr(r_{k-1}\le y^*\le r_k|x)=pr(r_{k-1}\le x'\beta +\epsilon\le r_k|x) $$
+$$=pr(r_{k-1}-x'\beta\le \epsilon \le r_k-x'\beta|x)= \Phi(\frac{r_k-x'\beta}{\sigma})-\Phi(\frac{r_{k-1}-x'\beta}{\sigma})$$
+Therefore, for an individual $i$ we can easily write down the his likelihood
+$$\prod_{1}^{K}{p^{d_k}_k}$$
+in which $d_k=1$ if he chooses k, and 0 otherwise.Knowing the likelihood of each person we can construct mle and estimate $\beta$, $\sigma$ and ${\{r_k\}}^{K}_{k=1}$

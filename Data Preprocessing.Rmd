@@ -1,0 +1,76 @@
+---
+title: "Data Preprocessing"
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 3
+     fig_width: 4.5
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Scaling/Standardization
+
+## Scaling: Min-max Normalization
+
+$$\tilde{x} = \frac{x-x_{min}}{x_{max}-x_{min}}$$
+
+Scaling to a range is a good choice when both of the following conditions are met:
+
+- You know the approximate upper and lower bounds on your data with few or no outliers.
+- Your data is approximately uniformly distributed across that range.
+
+A good example is age. Most age values falls between 0 and 90, and every part of the range has a substantial number of people.In contrast, you would not use scaling on income, because only a few people have very high incomes. The upper bound of the linear scale for income would be very high, and most people would be squeezed into a small part of the scale.
+
+If you have outliers in your feature (column), normalizing your data will scale most of the data to a small interval, which means all features will have the same scale but does not handle outliers well.
+ 
+A more robust scaling method is to use the following transfer 
+
+$$\tilde{x} = \frac{x-q_{50}(x)}{q_{75}(x)-q_{25}(x)}$$
+
+in which $q$ is quantile. 
+
+## Standardization (z-score)
+$$\tilde{x} = \frac{x - \mu}{\sigma}$$
+- When the feature distribution does not contain extreme outliers. we can use this method, which is robust to the outliers
+
+- For linear regression with cross-terms, e.g., $x_1, x_2, x_1*x_2$, a common practice is to standardize $x_1$ and $x_2$ first, and then produce the cross term using the standardized value. This is said to weaken the correlation between $x_1$ ($x_2$) and $x_1*x_2$.
+ 
+for more detailed discussion see [here](https://link.springer.com/article/10.3758/s13428-015-0624-x#:~:text=Some%20researchers%20say%20that%20it,has%20no%20effect%20on%20multicollinearity)
+
+## Issues of traning dataset and evaluation data set
+During the cross validation, the proper way to do normalization (standardization ) is :
+
+- For train data set: (trainData - mean(trainData)) / sd(trainData)
+
+- For test data set: (testData - mean(trainData)) / sd(trainData)
+
+# Logarithm transformation
+- For independent variables :Log scaling is helpful when a handful of your values have many points, while most other values have few points. This data distribution is known as the power law distribution. Log scaling changes the distribution, helping to improve linear model performance.
+
+- If your model has heteroskedasticity, it is useful to take log of the target variable to eliminate it.
+
+- For time series, if we find out some time series data has larger fluctuation as they increases, then it is good to do logarithm transformation. Such transformation makes sure that the variance of the time series does not change as it increases or increases.
+
+# Dealing with Missing Values 
+
+## Missing values in the target variable (dependent variable)
+Need to check whether the missing is random or not. See 'sample selection' model for more details.
+
+## Missing values in the explanatory variables
+### For category variables
+Treat the 'missing' observations as a separate category.For example, one variable $x$ takes two values ,0 or 1. If there are missing values, i.e., 'NA', on this $x$, we simply regard that $x$ has a level of 'NA'. Now we have three levels of $x$, and we need to turn it to two dummy variables. We can use 'NA' level as reference level, so we can create two variables, $x_1$ (equals 1 when $x=0$ and 0 otherwise), $x_0$ (equals 1 when $x=0$ and 0 otherwise )
+
+### For numerical variables
+Suppose that now that $x$ is a continuous variable. How to deal with the NA values? 
+
+First, create a variable $isna_x$, that denotes 1 when $x$ is missing and 0 otherwise. This variable is also put into the model. 
+
+Second, impute the NA values of $x$.
+
+- If most of $x$ are zeros (i.e., sparse), then impute the NA with 0.
+- If not sparse, then impute the NA with mean of the non-NA values. 

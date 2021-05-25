@@ -1,0 +1,294 @@
+---
+title: "Data Truncation and Censoring"
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 3
+     fig_width: 4.5
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Introduction
+In the econometric textbook, we encounter cases where the information of $y$ of some sample are missing, making it impossible to directly infer from these samples. There are various scenarios and models: truncated regression, sample selection model, tobit model, and hurdle model... In this text, however, I first show that all these models share the same framework and idea by introducing a general setting and estimating strategy. The various models can be derived by making specific assumptions on the function form and the distribution of the error term on the general setting.
+
+# General Framework
+Starting from a general framework. 
+$$y_i = \begin{cases}
+y^*_i,\quad w_i =1 \\
+'Abnormal', \quad w_i=0 \\
+\end{cases}
+$$
+and we have 
+$$y^*_i = x'_i \beta +\epsilon_i$$
+and 
+$$
+w_i = \begin{cases}
+1, \quad z'_i \gamma +v_i>0 \\
+0, \quad z'_i \gamma+ v_i<0
+\end{cases}
+$$
+Here, when $w_i=1$, then the individual's $y^*_i$ can be observed. When $w_i =0$, the $y^*_i$ cannot be observed: either it directly disappear (truncated), or it becomes a constant value (censored). Here I use 'abnormal' to informally describe such a situation. in either way, we cannot get the information the $y^*_i$. $u_i$ and $v_i$ follows some joint distribution.We discuss the following two cases. 
+
+## Case 1: Sample with y= 'abnormal'  totally missing
+This means that those individuals with $y='abnormal'$ are not in sample, so we cannot observe any information of them. All we can observe is just those individuals with $w_i=1$. We first derive the true conditional expectation of $y$ for this part of individuals.
+$$E(y_i | x_i,z_i,w_i =1)= E(x'_i\beta+ \epsilon_i | x_i,v_i > -z'_i \gamma )=x'_i\beta+  E(\epsilon_i | x_i,v_i > -z'_i \gamma ) \tag{1}$$
+This implies that the true (conditional) expectation of $y_i$ should be a linear function of $x'_i$ and a non-linear function of $z'_i$.<b>Therefore,if $x$ and $z$ contain no common variables, then a linear regression of $y_i$ on $x_i$ is consistent (variance of estimator may be large, though), but if they contain some common variables, then the estimation on $\beta$ from such a linear regression will be inconsistent. </b>
+<p>An alternative estimation strategy is to use NLS (specify a non-linear function of $z$ and a linear function of $x$ in the model). Another estimating strategy is to use MLE. Since we can only observe the information of those with $w_i=1$,when writing down the likelihood function for each individual $i$, we need to condition on $w_i=1$.
+$$L_i(y=y_i, x_i, z_i) \equiv pr(y=y_i | w_i =1,z_i,x_i)= \frac{pr(y =y_i, w_i=1| z_i,x_i)}{pr(w_i =1 | w_i, x_i)}$$
+$$=\frac{pr(\epsilon_i = y - x'_i\beta,v_i>-z'_i )}{pr(v_i>-z'_i \gamma)} \tag{2}$$
+We can calculate these two terms if we know the joint distribution of $\epsilon_i$ and $v_i$. Using this likelihood function, we can estimate the $\gamma$ and $\beta$ (if the distribution parameter of $\epsilon_i$ and $v_i$ are all given) using mle method. Of course, if we know the distribution specification of $\epsilon_i$ and $v_i$ but do not know the distribution parameters, we can estimate these distribution parameters along with $\gamma$ and $\beta$ simultaneously in the MLE.
+    
+As is very similar to the sample selection, in reality we often encounter such a sample loss problem. One example can be the plan to open new stores. To analyze the effect of geographic characteristics on store sales, a straightforward approach is to collect the historical data on existing stores. But here is a problem: when the decision maker chooses the locations for previous stores, he did not choose them randomly; instead, he had to consider several factors which may often affect the sales. For example, suppose that a factor $z$ affects the choice of store opening, and $x$ affects the sales of the existing stores. $x$ and $z$ can be the same. We immediately have a data generation process that can be described by the above equations. Consequently, we should estimate the model using the above conditional probability as likelihood function. 
+    
+## Case 2: Sample with y='abnormal' still have observable $z$ and $x$
+In this case, even if an individual has $y='abnormal'$, we can still observe its $z_i$ and $x_i$.
+Still,from (1),  a simple linear regression  using $x$ on those sample with $w_i=1$  may be inconsistent. 
+   <p> If we define 'abnormal' as being censored at a level (i.e., $y_i=c$ when $w_i=0$) so that we cannot observe its real $y$, i.e., $y^*_i$, then the true conditional expectation of $y$ for the whole sample ($w_i=1$ and $w_i=0$) is 
+$$E(y_i | x_i,z_i)= E(y_i |x_i, w_i =1)pr(w_i =1 |z_i)+ E(y_i|x_i,w_i =0)pr(w_i =0 |z_i)$$
+$$=\left[ x'_i\beta+ E(\epsilon|x,v_i>-z'_i \gamma) \right]pr(v_i>-z'_i \gamma)+c*pr(v_i<-z'_i \gamma) \tag{3}$$
+Again, this true model is a linear function of $x_i$ and a non-linear function of $z_i$. A simple linear regression using $x_i$ is not a good idea, and we may need NLS or MLE to estimate.
+When doing MLE, we can write down the the likelihood function of individual $i$ as 
+$$L_i \equiv {\left[ pr(y =y_i, w_i=1| z_i,x_i)  \right]}^{w_i } { pr(w_i =0)}^{1-w_i }$$
+$$={\left[ pr(\epsilon_i = y_i - x'_i\beta,v_i>-z'_i \gamma ) \right]}^{w_i =1} { \left[pr(v_i<-z'_i \gamma)\right]}^{w_i =0} \tag{4}$$
+This is straight forward. If $w_i=1$, then individual $i$ provides valid information on $w_i$ and $y^*_i$, so we can get its likelihood as $pr(y =y_i, w_i=1| z_i,x_i) $. If $w_i=0$, then individual $i$ provides valid information on only $w_i=0$, therefore the likelihood function is $pr(w_i =0)$.
+<p>
+
+# Special Case 1: Truncated Model
+If we assume
+$$ x=z,\gamma = \beta,v=\epsilon$$
+and assume that sample with abnormal $y$ are totally missing, then the model becomes Truncated model.
+To be specific, the framework now becomes 
+$$y_i = \begin{cases}
+y^*_i,\quad w_i =1 \\
+unobservable, \quad w_i=0 \\
+\end{cases}$$
+and we have 
+$$y^*_i = x'_i \beta +\epsilon_i$$
+and 
+$$w_i = \begin{cases}
+1, \quad x'_i \beta +\epsilon_i>c \\
+0, \quad x'_i \beta+ \epsilon_i<c
+\end{cases}$$
+This is to say we cannot be able to observe those sample with $y^*_i$ lower than $c$. We call that such data sample is truncated at $y=c$.
+<p>Following the (1), we first find out the expression of $E(y_i|x_i,w_i=1)$. Assume that $\epsilon$ follows$N(0,\sigma^2)$. It is easy to see that
+    $$E(y_i|x_i,w_i=1)= E(\beta x_i +\epsilon_i|x_i,\epsilon_i>c-\beta x_i)=\beta x_i + E(\epsilon_i| \epsilon_i>c-\beta x_i)$$
+
+Before we proceed further, we first give the following simple result: if $s \sim N(0,1)$ then 
+$$E(s|s>c)= \frac{\phi(c)}{1-\Phi(c)}$$
+Since we assume that $\epsilon$ follows $N(0,\sigma^2)$, we have the following simple result:
+$$E(\epsilon_i| \epsilon_i>c-\beta x_i)= \sigma \frac{\phi(\frac{c-\beta x_i}{\sigma})}{1-\Phi(\frac{c-\beta x_i}{\sigma})}\equiv \sigma\lambda(\frac{c-\beta x_i}{\sigma})$$
+The $\lambda(.)$ is called 'Inverse Mills Ratio'. Therefore, it is easy to see that 
+ $$E(y_i|x_i,w_i=1)= E(\beta x_i +\epsilon_i|x_i,\epsilon_i>c-\beta x_i )=\beta x_i +  \sigma\lambda(\frac{c-\beta x_i}{\sigma}) $$
+This is what the true model should look like. Therefore, if we simply regression $y$ on $\beta x$, there will be omitted variable problem, and estimation is no longer the consistent. Therefore we use MLE to estimate. Following (2), we want to find out the likelihood for each individual.
+$$pr(y=y_i |x_i, w_i=1)=f(y_i|x_i, y_i>c)=\frac{f(y_i)}{pr(y_i >c)}$$
+since $y_i $ follows $N(\beta x, \sigma^2)$, we have 
+$$f(y)= \frac{1}{\sqrt{2\pi \sigma^2}}e^{-\frac{{\left(y-\beta x\right)}^2}{2\sigma^2}}= \frac{1}{\sigma}\phi(\frac{y-\beta x}{\sigma})$$
+and 
+$$pr(y>c)= pr(\beta x + \epsilon>c)= \Phi(\frac{c-\beta x}{\sigma})$$
+There fore  we have 
+$$f(y_i|x_i, y_i>c)=\frac{\frac{1}{\sigma}\phi(\frac{y_i-\beta x_i}{\sigma})}{ \Phi(\frac{c-\beta x_i}{\sigma})}$$
+Now we are ready to construct the MLE to estimate the $\beta$ and $\sigma$.
+
+
+# Sample Selection Model
+We assume that 
+$$v\ne \epsilon, \gamma\ne \beta, cov(\epsilon,v)\ne 0$$
+and sample with $y='Abormal'$ does not have observable $y$, bu still have observable$x$ and $z$. The model now becomes:
+$$y_i = \begin{cases}
+y^*_i,\quad w_i =1 \\
+Unobservable, \quad w_i=0 \\
+\end{cases}
+$$
+and we have 
+$$y^*_i = x'_i \beta +\epsilon_i$$
+and 
+$$
+w_i = \begin{cases}
+1, \quad z'_i \gamma +v_i>0 \\
+0, \quad z'_i \gamma+ v_i<0
+\end{cases}
+$$
+This model is called sample selection model. It captures such a situation: sometimes, individuals 'choose' not to enter the sample, due to some factor $z$. An example is that, you want to estimate labor supply of females. Suppose you have a very simple model:
+$$L_s = \beta_1* wage+\beta_2*children+u \tag{*}$$
+and we specify a function of reservation wage $\omega_r$
+$$\omega_r = \gamma_1 * children + \gamma_2 * age+v$$
+if $\omega_r<0$ the female does not choose to work, so we cannot observe its $L_s$.i.e., $L_s$ is truncated for $\omega_r<0$. We can see that, here, the $children$ variable can affects the decision on both whether to enter the market and how much labor to supply. In this situation, directly estimating ($*$) will lead to inconsistent estimation. To see, we go back to the model set-up and derive the conditional expectation of $y$.
+<p>
+Following (1), we immediately know $E(y| x, w_i=1)$: 
+    $$
+    E(y|  x, w_i=1)= \beta x + E(\epsilon | v>-z'\gamma )
+    $$
+If we assume that $v$ and $\epsilon$ are jointly normal distributed with variance $1$ and $\sigma^2_\epsilon$, and correlation coefficient $\rho$, then we have 
+$$
+ E(y| x, w_i=1)= \beta x + \rho \sigma_{\epsilon}\lambda(-z' \gamma) 
+$$
+If $x$ and $z$ do not have common variables(which means whether you are in the sample or not is independent of the $y$),or the $v$ and $\epsilon$ is uncorrelated (i.e., $\rho=0$), then it is safe to regress $y$ on $x$. But in most cases, $x$ and $z$ may contain common variables, or $\epsilon$ and $v$ are correlated ($\rho \ne 0$), making the estimator of such regression no longer consistent. 
+    Going back to our labor supply example, the variable $children$ enters both $x$ and $z$. Therefore, what is the effect of $children$ on average labor supply that is observed? <b>First, it indeed directly affects the labor supply, through the term $x'\beta$. Second, it affects individual's probability of entering the labor market, which affects the average labor supply by changing the composition of people in the labor market, through the term $\rho\sigma_{\epsilon}\lambda(-z'\gamma)$.</b>. Therefore, only incorporating the linear part of $children$ into the model only gets an estimation of the mixed effects of the two. </p>
+The above situation often happens <b>when the outcome variable and whether the outcome variable can be observed (whether the individual enter the market) are affected by some common factors</b>.
+Other example includes:
+    <p>The stock a firm issues and whether it enter the stock market is determined by some common factors such as productivity.Using firms who issue stocks as sample to run a regression is therefore a bad idea to estimate the 'direct effect' of productivity on stock issue amount. Keep in mind to use sample selection model whenever there may be some market entry behavior. </p>
+   
+<p>The estimation strategy is straight-forward.
+
+## Method 1: Heckman two-step 
+### step 1
+A natural way to deal with this is to estimate the $\lambda(-z' \gamma)$ first, which means we need to estimate the $\gamma$ first. It is easy to do this using MLE (same as probit).For an individual, its likelihood function is
+$$
+{pr(z_i \gamma + v_i>0)}^{w_i}{pr(z_i \gamma + v_i<0)}^{1-w_i} 
+$$
+We can then write down the MLE and estimate the $\hat{\gamma}$.(notice $v_i$ is normal distribution). We then get the $\hat{\lambda_i}$ for each individual.
+
+### step 2
+We can then estimate the $\beta$ using (1).(but can $\rho$ and $\sigma_\epsilon$be identified? )
+
+## Method 2: MLE 
+Of course, we can also directly use MLE.Following (4), the likelihood function for individual $i$ is 
+$$
+{pr(z_i \gamma + v_i>0, y=y_i)}^{w_i}{pr(z_i \gamma + v_i<0)}^{1-w_i}
+$$
+in which 
+$$
+pr(z_i \gamma + v_i>0, y=y_i) = f( y=y_i) pr(z_i \gamma + v_i>0|y=y_i)
+$$
+We know that $y$ follows $N(\beta x, \sigma^2_\epsilon)$. Therefore $f(y=y_i)= \frac{1}{\sigma_\epsilon}\phi(\frac{y_i-\beta x_i}{\sigma_\epsilon})$. Calculating $pr(z_i \gamma + u_i>0|y=y_i)$ is a bit tricky. First we know that,
+$$pr(z_i \gamma + v_i>0|y=y_i)=pr( v_i>-z_i \gamma |\epsilon_i=y_i-x_i\beta)$$
+Since $v$ and $\epsilon_i$ jointly follow normal distribution, we can easily calculate this term. 
+
+# Tobit Model Type 1
+We now assume:
+$$x=z, v=\epsilon,\gamma=\beta$$
+The framework now becomes 
+$$y_i = \begin{cases}
+y^*_i,\quad w_i =1 \\
+0, \quad w_i=0 \\
+\end{cases}
+$$
+and we have 
+$$y^*_i = x'_i \beta +\epsilon_i$$
+and 
+$$
+w_i = \begin{cases}
+1, \quad x'_i \beta +\epsilon_i>0 \\
+0, \quad x'_i \beta+ \epsilon_i<0
+\end{cases}
+$$
+Then we are faced with censored data.Assume $\epsilon_i$ is normal distribution with $N(0,\sigma^2)$, and $E(u_i|x_i)=0$. This model is also called Tobit type 1 model. Some examples includes the choice of housing or vehicle purchasing, or labor supply, which are always censored at 0.
+<p>We still follow the general framework to check whether we can get a consistent estimation using OLS,  we still check $E(y|x)$ and $E(y|x,w_i =1)$. First, following (1)
+$$E(y|x, w_i=1)= E(x'_i\beta +\epsilon_i|x, x'_i\beta +\epsilon_i>0)=x'_i\beta +E(\epsilon_i|x, \epsilon_i>-x'_i\beta )=x'_i\beta+\sigma \lambda(x'_i\beta/\sigma)$$
+Apparently, for those sample whose $y^*$s are not censored, we cannot get consistent estimation of $\beta$ using OLS of linear regression, due to the existence of the second term (but non-linear last square method works). The intuition is similar to that in the previous section.<b> $x_i$ has two effects on the average $y$ in the sample with $w_i=1$: first, it directly affects the average $y$ through $\beta$; second, it indirectly affects the average $y$ by changing the threshold of being censored or not, thus changing the composition of sample in $w_i=1$.</b>
+<p>On the other hand, see $E(y|x)$.According to (3):
+$$E(y|x)= E(y|x, w_i=1)pr(w_i =1)+E(y|x,w_i =0)pr(w_i =0)=\Phi(x'_i\beta/\sigma)(x'_i\beta+\sigma \lambda(x'_i\beta/\sigma))$$</p>
+This expression contains non-linear parts of $x_i$, therefore a OLS linear regression is still not consistent (but a non-linear least square works.)
+<p>For an exercise, we can also show the above results by specifying 
+    $$y_i = x'_i\beta +u_i$$ and shows that $E(u_i|x_i)\ne 0$ (so ols linear regression is not consistent). Specifically,$$E(u_i|x_i)= E(\epsilon_i|x_i, \epsilon_i \ge -x'_i \beta)pr( \epsilon_i \ge -x'_i \beta)+ E(-x'_i\beta|x_i, \epsilon_i \le -x'_i \beta)pr( \epsilon_i \le -x'_i \beta)$$
+    $$=\int{\max{(\epsilon,-x'_i\beta )}d (\epsilon|x_i)} \ge \int{\epsilon d (\epsilon|x_i)}=0$$
+</p>
+
+## Estimation Strategy
+Following (4),the likelihood of an individual is
+$${\left[ pr(y=y_i|x_i,w_i=1)pr(w_i=1 |x_i)  \right]}^{w_i}{\left[pr(w_i=0|x_i) \right]}^{1-w_i}$$
+$$={\left[ pr(y=y_i|x_i,y_i>0)pr(y_i>0 |x_i)  \right]}^{w_i}{\left[pr(y_i<0|x_i) \right]}^{1-w_i}={\left[\frac{f(y=y_i|x_i)}{pr(y_i>0|x_i)}pr(y_i>0 |x_i)  \right]}^{w_i}{\left[pr(y_i<0|x_i) \right]}^{1-w_i}$$
+$$={\left[ f(y=y_i|x_i) \right]}^{w_i}{\left[pr(y_i<0|x_i) \right]}^{1-w_i}={\left( \frac{1}{\sigma}\phi(\frac{y_i-x'_i\beta}{\sigma})  \right)}^{w_i} {\left[ \Phi(\frac{-x'_i\beta}{\sigma})\right]}^{1-w_i} $$
+# Cragg's hurdle model
+If we assume that 
+ $$x=z, v \ne \epsilon,\gamma \ne \beta,cov(\epsilon,v)=0$$
+and $y$ is censored.The model now becomes:
+$$y_i = \begin{cases}
+y^*_i>0,\quad w_i =1 \\
+0, \quad w_i=0 \\
+\end{cases}
+$$
+and we have 
+$$y^*_i = x'_i \beta +\epsilon_i$$
+and 
+$$
+w_i = \begin{cases}
+1, \quad z'_i \gamma +v_i>0 \\
+0, \quad z'_i \gamma+ v_i<0
+\end{cases}
+$$
+This is cragg's hurdle model. We assume that $\epsilon_i$ follows <b> a truncated normal distribution with lower bound $-x'_i \beta$ and variance $\sigma_2$</b>. This assumption makes sure that $y^*_i$ is non-negative.Assume that $v$ follows a standard normal distribution. Taking consumption for example, The framework decries the situation that people first choose whether to buy($w_i=1$) or not($w_i=0$). For people choosing $w_i=0$, they do not make any consumption, therefore $y_i =0$. for people choosing $w_i =1$, they further make choice on the amount of consumption, $y^*_i$, which is non-negative.<b> A major advantage of hurdle model compared to the tobit type 1 model is that, here the hurdle model allows the mechanism that determines the entrance decision differs from the mechanism that determines the amount decision. Therefore the hurdle model is more flexible. </b>
+<p>We first check the conditional expectation of $y_i$:
+$$E(y_i | x_i,w_i =1)= E(x'_i\beta+ \epsilon_i | v_i > -z'_i \gamma )=x'_i\beta+  E(\epsilon_i | x_i, v_i > -z'_i \gamma )=x'_i\beta+  E(\epsilon_i | x_i )$$
+
+The final equation holds since $v_i$ and $\epsilon_i$ are independent. Since $\epsilon_i$ here follows a truncated normal distribution, it is easy to get $E(\epsilon_i | x_i )=\sigma \lambda(\frac{x'_i \beta}{\sigma})$. Following (3),it is also easy to see that the conditional $y$ of whole sample is
+$$
+E(y_i | x_i)=\left[ x'_i\beta+ E(\epsilon|x,v_i>-z'_i \gamma) \right]pr(v_i>-z'_i \gamma)+0*pr(v_i<-z'_i \gamma)
+$$
+$$=\left[x'_i\beta+\sigma \lambda(\frac{x'_i \beta}{\sigma})\right]\Phi(z'_i \gamma)$$
+<p>
+Following (4),we can immediately write down the likelihood for individual $i$ as follows 
+$$
+{pr(z_i \gamma + v_i>0, y=y_i)}^{w_i}{pr(z_i \gamma + v_i<0)}^{1-w_i}
+$$
+since $u$ and $v$ are independent, we have 
+$$
+pr(z_i \gamma + v_i>0, \epsilon=y_i-x'_i \beta)=pr(z_i \gamma + v_i>0 )f_\epsilon(y_i-x'_i \beta)=\Phi(z'_i\gamma )\frac{\frac{1}{\sigma}\phi(\frac{y_i-x'_i \beta}{\sigma})}{1-\Phi(\frac{-x'_i \beta}{\sigma})}
+$$
+and $pr(z_i \gamma + v_i<0)=1- \Phi(z'_i\gamma )$. Now we can estimate the $\beta$ and $\sigma$.</p>
+<p>The following lecture notes link also talks about the log-normal hurdle model. The basic idea is similar with here, except for the specification of the uncertainty:[here]( http://legacy.iza.org/teaching/wooldridge-course-09/course_html/docs/slides_twopart_5_r1.pdf)
+
+# Exercise 
+## Switching Regression model
+Suppose that we have two models
+$$y^*_{0i}= \beta_{0i} x_{0i} + u_{0i}, \quad y^*_{1i}= \beta_{1i} x_{1i} + u_{1i}$$
+and $$
+y_i= \begin{cases}
+y^*_{0i},\quad z_i\gamma+v_i<0\\
+y^*_{1i},\quad z_i\gamma+v_i>0\\
+\end{cases}
+$$
+$y^*_{0i}$ and $y^*_{1i}$ are un-observable, but $y_i$ is observable. The conditional $y_i$ is therefore 
+$$E(y|x_1,x_0,z)= E(y|x_1,x_0,z,z_i\gamma+v<0 )pr(z\gamma+v<0)+ E(y|x_1,x_0,z,z\gamma+v>0 )pr(z\gamma+v>0)$$
+$$= \left[ x_0\beta_0 + E(u_0|v<-z \gamma) \right]pr(v<-z \gamma)+\left[ x_1\beta_1 + E(u_1|v>-z \gamma) \right]pr(v>-z \gamma)$$
+This is a non-linear function of $z$. Therefore a linear regression specification may not be a good idea. Let's still use mle. It is easy to write down the likelihood function for each individual $i$
+$$pr(y_i|x_i, z_i)= pr(\beta_{0i} x_{0i} + u_{0i}=y_i, z_i\gamma+v_i<0|x_i,z_i )+pr(\beta_{1i} x_{1i} + u_{1i}=y_i, z_i\gamma+v_i>0|x_i,z_i )$$
+$$=pr(v_i<-z_i\gamma | u_{0i}=y_i-\beta_{0i} x_{0i},z_i)f_{u_{0}}(y_i-\beta_{0i} x_{0i})+pr(v_i>-z_i\gamma | u_{1i}=y_i-\beta_{1i} x_{1i},z_i)f_{u_{1}}(y_i-\beta_{1i} x_{1i})$$
+It is easy to get the exact expression for this likelihood if we know the joint distribution of $u_0,u_1,v$
+
+## Tobit Model with endogeneous variable
+Suppose that we have the following model:
+$$y^*_{1i}=y_{2i}\beta +u_i$$
+$$y_{2i}=z'_i \gamma + v_i$$
+$$y_i = \begin{cases}
+y^*_{1i},\quad w_i=1 \\
+0, \quad w_i=0\\
+\end{cases}
+$$
+$$
+w_i = \begin{cases}
+1,\quad y^*_{1i}>0 \\
+0, \quad otherwise \\
+\end{cases}
+$$
+in which $cov(u,v)\ne 0$. we also assume that 
+$$
+\left[\begin{array}{c}
+            u \\
+            v \\
+        \end{array}\right] \sim \quad   
+        N
+        \left[\begin{array}{cc}
+            \left[\begin{array}{c}
+            0 \\
+            0 \\
+        \end{array}\right] ,
+            \left[\begin{array}{cc}
+            1,\rho \sigma \\
+            \sigma \rho,\sigma^2 \\
+        \end{array}\right]  \\   
+        \end{array}\right] 
+$$
+Therefore $y_{2}$ is endogenous if $\rho \ne 0$
+The likelihood function is very easy to write. for $w_i=1$, the likelihood is 
+$$pr(y_1 = y_{1i}, y_2=y_{2i},w_i =1)=pr(y_1=y_{1i}| y_2=y_{2i}, w_i =1)pr(w_i=1 , y_2= y_{2i})$$
+$$=pr(y_1=y_{1i}| y_2=y_{2i}, w_i =1)pr(u_i>-x'_i\beta , v_i= y_{2i}-z'_i \gamma)$$
+we have
+$$pr(y_1=y_{1i}| y_2=y_{2i}, w_i =1)=pr(y_1=y_{1i}| y_2=y_{2i}, y_{1i}>0)=\frac{\frac{1}{\sigma}f_u(\frac{y_{1i}-y_{2i}\beta}{\sigma}) }{1-\Phi(\frac{0-x'_i\beta}{\sigma})}$$
+and $pr(u_i>-x'_i\beta , v_i= y_{2i}-z'_i \gamma)$ is also easy to handle since we already know the the joint distribution of $u_i$ and $v_i$.
+On the other hand, for $w_i=0$,we no longer get the exact information of y. the likelihood is
+$$pr(y_2=y_{2i},w_i =0)= pr( v_i= y_{2i}-z'_i \gamma,u_i>-x'_i\beta ) $$

@@ -1,0 +1,61 @@
+---
+title: "Some tips on Bayesian Estimation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Diagnostic
+
+## Autocorrelation
+### Consequence
+Autocorrelation is a measure of how much the value of a signal correlates to other values of that signal at different points in time. In the context of MCMC, autocorrelation is a measure of how independent different samples from your posterior distribution are – lower autocorrelation indicating more independent results.
+
+When you have high autocorrelation the samples you've drawn don't accurately represent the posterior distribution and therefore don't provide as meaningful information for the solution to the problem. In other words, lower autocorrelation means higher efficiency in your chains and better estimates. A general rule would be that the lower your autocorrelation, the less samples you need for the method to be effective (but that might be oversimplifying).
+
+If autocorrelation is high then N samples are not giving you N pieces of information about your distribution but fewer than that. 
+
+### Check
+-The Effective Sample Size (ESS) is one measure of how much information you're really getting (and is a function of the autocorrelation parameter). In general it is safe for ESS to be above 100.
+- Also plot the autocorrelation for your sampled parameters. Parameters with lower ESS tends to have strong auto-corrleation
+
+Relatedly, autocorrelation gives you unrepresentative samples 'in the short run'. Moreover, the more autocorrelation there is, the longer that 'short run' is. For very strong autocorrelation, the short run might be a good fraction of your total samples. 
+
+In short, a strongly autocorrelated chain takes longer to get from its starting conditions to the target distribution you want, while being less informative and taking longer to explore that distribution when it gets there.
+
+### Remedies
+- The usual direct remedies are re-parameterisation or sampling parameters that you expect to be intercorrelated in blocks rather than separately since they will otherwise generate autocorrelation in the chain. 
+- If you have decided on the sampler(model) already, and do not have the option of playing around with other samplers, then 
+  - People often also 'thin', although there is some discussion about how useful this is in solving the underlying problem, e.g. here. Kass 1997 is an informal discussion of the issues, though there's probably something newer that others can recommend.Thinning is not generally suggested since it is argued that throwing away samples is less efficient than using correlated samples.
+  - find good starting values. The autocorrelation is also affected by starting values of the Markov chain. There is generally an (unknown) optimum starting value that leads to the comparatively less autocorrelation.
+  - run the sampler for a long time, so that you Effective Sample Size (ESS) is large. Look at the R package mcmcse here. If you look at the vignette on Page 8, the author proposes a calculation of the minimum effective samples one would need for their estimation process. You can find that number for your problem, and let the Markov chain run until you have that many effective samples.
+- Specify the prior belief of parameters helps the convergence. 
+
+## BIC and related statistics
+- We use Bayesian Information Criterion (BIC) (Schwarz, 1978) to select the most appropriate model for this data set.
+$$BIC = −2 \log{\hat{L}} + k log(n)$$
+where $\hat{L}$ is the maximized value of the likelihood function, k is the number of free parameters, and n is the sample size. $\log{\hat{L}}$ is approximated by the average of the log likelihood plugging in the posterior samples of the parameters after the MCMC sampler has burned in5
+. BIC balances the need of fitting the data well and penalizing against model complexity. In general we prefer a model with the smallest BIC value. 
+- Other model selection criteria such as DIC (Spiegelhalter, Best, Carlin & Van Der Linde, 2002) or WAIC (Vehtari, Gelman & Gabry, 2015; Watanabe, 2010) can also be used. However, the reader should bear in mind that these criteria aim at selecting the most appropriate regression model, not the model with the most accurate causal inference. 
+- Models will converge faster with mathematical tricks:
+Center and scale predictors (scale(x, center = TRUE, scale = TRUE) will do: (x - mean(x))/sd(x)).
+- Do non-centered parameterization! 
+https://mc-stan.org/docs/2_18/stan-users-guide/reparameterization-section.html 
+- See https://discourse.mc-stan.org/t/aic-bic/11036
+
+## Some References:
+https://fukamilab.github.io/BIO202/05-B-Bayesian-priors.html
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

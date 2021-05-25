@@ -1,0 +1,112 @@
+---
+title: 'Average Treatment Effect: Observational Data'
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 3
+     fig_width: 4.5
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# CIA 
+
+# Parametric method: Regression
+
+## Curse of Dimension
+
+One big problem with the above strategy is that, in reality, the dimension of $x$ may be very high; we may have so many potential confound variables we need to control for, that the $p<<n$ does not hold any more. 
+
+One straight forward solution is of course to use lasso to reduce some covariates in $x$. Apparently, simply use a lasso regression may get rid of some important confounders, making the $D$ again correlated to the error term.  To be more specific, when we use CV-Lasso to select the best model, we are selecting the model which has the lowest OOC deviance, but we cannot make sure this best model incorporates all important covariates or not.
+
+This sounds like a dilimma: including all covariates leads to poor estimation, while excluding covariates via regulation may lose some important convariates and leads to inconsistent estimation. How can we deal with this? 
+
+### Method 1: LTE Lasso
+This method try to summarize the information of the confounders into a simple scalar. 
+
+- Estimate the following equation using lasso:
+$$D = \gamma x + v$$ 
+in which $v$ is the error term. From this estimation we get $\hat{D} = \hat{\gamma}x$. Therefore, $\hat{D}$ contains the information of $x$ that influence the $D$.
+
+- Fit the following equation using Lasso:
+$$y = \alpha D + \theta \hat{D} + \beta x + \epsilon$$ 
+in which $\epsilon$ is the error term. Notice that when we do lasso here, we put penalty on $\beta$ but not on $\theta, \alpha$. This is to insure that $\hat{D}$, who contain important information on confounders, and $D$, the treatment we are interested in, do not disappear. By doing this, we are controlled the counfounder well, while avoided the high dimension of $x$ by applying lasso. This method is described in more details in Matt Taddy's textbook (Chpater 6)
+
+I would like to say this method can only partly overcome the mentioned deliemma. As far as we start to use lasso in the first step, we may still exclude some variables, say $x'$, by setting its coefficient into zero. If $x'$ turns out to affects $D$ in fact, and if in the second step $x'$ is also excluded due to lasso , then $D$ is still correlated with error term.
+
+
+### Method 2: Residual Method
+
+This method is correlated with the the LTE lasso. 
+
+- Estimate the following equation using lasso:
+$$D = \gamma x + v$$ 
+in which $v$ is the error term. From this estimation we get $\hat{e} = y - \hat{\gamma}x$. Of course the $\hat{e}$ is not correlated with any covariate in $x$. 
+
+- Estimate the following equation using lasso:
+$$y = \alpha \hat{e} + \beta x +\epsilon$$
+We put penalty on $\beta$ on not on $\alpha$.
+
+I would like to say this method can only partly overcome the mentioned deliemma. As far as we start to use lasso in the first step, we cannot derive the properties under ols, e.g. the residual $\hat{e}$ is not correlated to $\beta x$. In other words, $\hat{e}$ may still be a correlated with some covariates, say $x'$, such that the coefficient of $x'$ is set to zero during the lasso. If the coefficient of $x'$ is also set to zero (i.e., it is excluded from $x$, so the error term in the second step contains the information of $x'$) in the second step, then $\hat{e}$ is still correlated with $\epsilon$, leading to erroroness estimation on $\alpha$
+
+### Method 3: Orthogonal ML
+
+Personally, I am a bit skeptical about the above two method. The orthogoal ML method, however, seems more intuitive, and is helpful in doing statistical inference. 
+
+Recall that we want to estimate 
+
+$$y = \alpha D + f(x) + \epsilon$$
+We actually do not care about the $f(x)$. further we have
+
+$$E(y|x) = \alpha E(D|x) + f(x) + E(\epsilon|x)$$
+Therefore,
+$$y - E(y|x) = \alpha (D- E(D|x)) + \epsilon - E(\epsilon|x)$$
+The above reasoning implies that we can 
+
+- First estimate $E(y|x)$ and $E(D|x)$ using the ML methods we like. 
+- Then we regress $y- \hat{E}(y|x)$ on $D-\hat{E}(D|x)$ to estimate the $\alpha$. 
+
+Again, the problem is that if we use lasso in the first step, we may throw out some important covariates from $x$. My personal advice would be not using lasso, but instead apply non-parametric estimation using kernel function. 
+
+As Matt Taddy puts, in practice we can combine this method with k-fold split to get inferential statistics on the parameters. See 'Algorithm 15' in Matt Taddy's Textbook. 
+
+## Comment
+I would like to say the above three methods may work when we want to automate our process of treatment effect estimation. If we are doing some adhoc project, then to me it is better to select the covariates $x$ according to our intuition.
+
+# Non-parametric method: Matching
+
+## Curse of Dimension, and propensity score!
+
+### Method 1:PSM
+
+For each individual $i$ in the treatment group, we find the samples in the control group with the same or close $ps$ with $i$. By this procedure, we actually create a pseudo control group, whose size is the same as in treatment group. We can use this newly generated data to do regression or non-parametric estimation. We only need to condition on $ps(x)$, instead of the high-dimensional $x$.
+
+
+### Demerit
+
+- Creating a control group by matching has the distressing side-effect of throwing away large amounts of the data, because the control group is shrunk down to the same size as the treatment group. This happens especially when the characteristics of groups are too different.
+
+-It is computationally expensive when facing large sample size. 
+
+- Unstable: Results are highly unstable, being sensitive to your matching criterion.
+
+- Rely on the common support assumption, which may be not true. 
+
+### Method 2: Inverse Propensity Weight
+
+For each $x$ value($x$ may be high dimensional), we can get $ps(x)$. For a given $x$, we have some inviduals in the treatment group, and some in the control group. Consider for example $ps(x) = 0.1$, a low probability of entering the treatment. Naturally, for this $x$, the number of individuals in treatment group is much smaller than that of the individuals in control group. This is as if each individuals in the treatment is more 'important' than those in the control group, so they should be given a 'higher weight', which is exactly the inverse of $ps(x)$. Theindividuals in control group is given a 'lower weight', which is exactly the inverse of $(1-ps(x))$.
+
+Once finishing this data construction, we can again use regression or non-parametric estimation. The merit of IPW is that it keeps all the data information. For example, for non-parametric methods, we can calculate 
+$$ATE = E_x\left(\frac{1(D=1)y}{ps(x)}\right)- E_x\left(\frac{1(D=0)y}{1-ps(x)}\right)$$
+
+
+### Demerit
+One of the criticisms of this inverse probability of treatment weighting approach is that individual observations can get very high weights and become unduly influential.Consider a lone treated observation that happens to have a very low probability of being treated. The value of the inverse of the propensity score will be extremely high, asymptotically infinity. The effect size obtained will be dominated by this single value, and any fluctuations in it will produce wildly varied results, which is an undesirable property.
+
+# Heterogeneous Treatment Effect 
+## Parametric Method 
+## Non-parametric Method: Causal tree. 

@@ -1,0 +1,25 @@
+---
+title: 'Averaget Treatment Effect in Experiment'
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 3
+     fig_width: 4.5
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Experiment 
+
+## Check the randomness of your experiment: AA test
+
+
+# Issues
+## Imperfect Randomization
+## Within Cluster inter-dependence
+## Too powerful external factors
+blocked randomized design

@@ -1,0 +1,213 @@
+---
+title: "State Space Model Estimation using Bayesian Estimation"
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 2
+     fig_width: 6
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction: 
+In general, state space model is easy to handle. There are many models, such as Local level model, local trend model, etc. We can decide which model to use through various diagnostic analysis. Here we use local level model as an example.
+
+
+
+# Procedure
+## Preparation
+
+Suppose that we want to analyze the google search trend of a singer, Carbi B. We have a time series of google search trend data for the singer. We also have a dummy variable, 'event_flg', specifying whether the singer release new songs.
+```{r, message=FALSE,warning=FALSE,eval=TRUE}
+library(readxl)
+library(dplyr)
+library(rstan)
+library(purrr)
+library(loo)
+library(bayesplot)
+
+df_test = read_excel('./cardib.xlsx')%>%
+  mutate (date_month = format(as.Date(date),"%Y-%m"))%>%
+  group_by (date_month)%>%
+  mutate (season_flg = ifelse(row_number() == n(),1,0))%>%
+  ungroup(.)%>%
+  select(-date_month) %>%
+  filter ( date>= '2016-11-13') %>%
+  setNames(c('time','y','event_flg','season_flg'))
+
+head(df_test)
+```
+##  Model Specification
+We choose the basic specification, local level. 
+
+$$y_t = \mu_t + x_t * \beta + u, \quad u \sim N(0, \sigma^2_u)$$
+$$\mu_t = \mu_{t-1}  + v, \quad v \sim N(0, \sigma^2_v)$$
+```{rstan, message=FALSE,warning=FALSE,eval=FALSE}
+// For local level model: stochastic
+data {
+  int<lower=1> n;
+  int<lower=1> n_new;
+  int<lower=1> k_x; 
+  vector[n] y;
+  matrix[n, k_x] x;
+}
+parameters {
+  vector[n] mu;
+  vector[k_x] beta; 
+  real<lower=0> sigma_level;
+  real<lower=0> sigma_irreg;
+}
+
+transformed parameters {
+  vector[n] yhat;
+  yhat = mu + x* beta;
+}
+
+model {
+  mu[2:n] ~ normal(mu[1:n-1], sigma_level);
+  y ~ normal(yhat, sigma_irreg);
+}
+
+generated quantities{
+  vector[n+n_new] pred;
+  vector[n] log_lik; // also calculate the likelihood: this is for calculating WAIC.
+  // be sure to write down the correct log likelihood function
+  log_lik[1] = normal_lpdf(y[1]|yhat[1], sigma_irreg);
+  pred[1:n] = mu[1:n];
+  for (i in 2:n){
+   // pred[i] = normal_rng(mu[i], sigma_irreg);
+    log_lik[i] = normal_lpdf(y[i]|yhat[i], sigma_irreg) + normal_lpdf(mu[i]|mu[i-1],sigma_level);
+  }
+  for (i in n+1: (n+n_new)){
+    pred[i] = normal_rng(pred[i-1], sigma_level);
+  }
+}
+
+```
+
+## specify the input and estimate
+```{r, message=FALSE,warning=FALSE,eval=TRUE}
+data_input = list(n = nrow(df_test),
+                  x = df_test%>%select(event_flg),
+                  y = log(df_test$y), 
+                 n_new = 14,
+                 k_x = 1
+                  )
+
+mod_res = stan('LocalLevel.stan', data = data_input,
+               seed = 1,
+               iter = 4000,
+               warmup = 2000)
+```
+
+## Output
+
+Using print function, we can easily get the estimation results of each parameter. 
+```{r, message=FALSE,warning=FALSE,eval=TRUE}
+print(mod_res,
+      pars = c("sigma_level",'sigma_irreg', 'beta'),
+      probs = c(0.025,0.5, 0.975))
+```
+
+Using extract function, we can get sample of bayesian estimation, and draw various graphs.
+```{r, message=FALSE,warning=FALSE,eval= TRUE}
+bayesian_sample = rstan:: extract (mod_res,
+                                   pars = c('sigma_level','sigma_irreg','beta'),
+                                   permuted = FALSE)
+
+```
+
+```{r, message=FALSE,warning=FALSE,eval= TRUE}
+
+# histogram 
+mcmc_hist(bayesian_sample, pars = c('sigma_irreg','sigma_level','beta[1]'))
+```
+
+```{r, message=FALSE,warning=FALSE,eval= TRUE}
+# density
+mcmc_dens(bayesian_sample, pars = c('sigma_irreg','sigma_level','beta[1]'))
+```
+
+```{r, message=FALSE,warning=FALSE,eval= TRUE}
+# traceplot
+mcmc_trace(bayesian_sample, pars = c('sigma_irreg','sigma_level','beta[1]'))
+```
+
+```{r, message=FALSE,warning=FALSE,eval= TRUE}
+# also want to check the auto-correlation of sampled parameters. 
+mcmc_acf_bar(bayesian_sample, pars = c('sigma_irreg','sigma_level','beta[1]'))
+```
+
+The autocorrelation of $sigma_irreg$ and $sigma_level$ are high. This can also be told from the low ESS of these two parameters.
+
+## Diagnostic Analysis
+Do all the diagnostic analysis in bayesian estimation. Besides this, we need to check the residuals. 
+
+```{r, message=FALSE,warning=FALSE,eval= FALSE}
+res_resid = rstan :: extract (mod_res,  permuted = TRUE)$yhat %>%
+  t(.)%>%
+  as.data.frame(.) %>% 
+  cbind (df_test$y) %>%
+  rename (y_real = 'df_test$y') %>% # now each column represents a prediction series
+  mutate( across(everything(), ~(.-y_real))) %>%  #get residual 
+  select (-y_real)#%>%
+
+```
+With a slight modification, the above code can immediately used for calculating the error rate. 
+
+### Independency of residuals
+We use Ljung-Box test to test for autocorrelation. A p-value lower than 0.05 means that we can reject the null hypothesis that there is no autocorrelation. 
+```{r, message=FALSE,warning=FALSE,eval= FALSE}
+res_resid_corr = res_resid %>%
+  summarise (across(everything(), ~ Box.test(., lag = 2, type = c("Ljung-Box"), fitdf = 0)[['p.value']]))%>%
+  t(.)%>%unlist(.)%>%mean()
+
+```
+### Normality of residuals
+We use shapiro test to check whether we can or not reject the hypothesis that the residuals follows normal distribution. A p-value lower than 0.05 indicates that we can reject the null hypothesis.
+```{r, message=FALSE,warning=FALSE,eval= FALSE}
+res_resid_normal = res_resid %>%
+  summarise (across(everything(), ~ shapiro.test(.)[['p.value']]))%>%
+  t(.)%>%unlist(.)%>%mean()
+
+```
+### homoskasticity of residuals 
+We regress the residuals on $\hat{y}$ to see whether the regression coefficient is significant or not. 
+
+## Information Criterion
+Use loo or waic to get the information criterion. Make sure that you specified the log_lik in the generated quantity block of you stan model!
+```{r, message=FALSE,warning=FALSE,eval= TRUE}
+infro_criterion = rstan :: extract (mod_res,  permuted = TRUE)$log_lik %>%
+loo(.)
+```
+
+## Prediction
+```{r, message=FALSE,warning=FALSE,eval= TRUE}
+# now do the prediction:
+res_pred = rstan :: extract (mod_res,  permuted = TRUE)$pred %>%
+  as.data.frame(.)
+# for each column, find out the mean,
+prediction = res_pred %>%
+  summarise(across(everything(), ~quantile(., probs = c(0.25,0.5,0.75))) )%>% t(.)%>% 
+  as.data.frame(.) %>% setNames(c('l','fit','u')) %>%
+  mutate (across (everything(), ~exp(.))) %>%
+  slice (1:nrow(df_test))%>%
+  cbind (df_test$y) %>%
+  cbind (df_test$time)%>%
+  rename (y_real = 'df_test$y', date = 'df_test$time')
+
+ggplot(data = prediction, aes(x = date))+
+  geom_line(aes(y = fit ), size = 1.2) +
+  #geom_ribbon(aes(ymin = l, ymax = u) , alpha = 0.3, fill = "grey80")+
+  geom_point(aes(y = y_real), size = 0.9, color = 'blue')
+```
+ 
+# Summary
+
+We should keep in mind that we can also use MLE(dlm package) to deal with the estimation of state space models. rstan is perfect for doing the bayesian estimation on state space model, but not for doing MlE.
+
+Also keep in mind, Bayesian estimation of the state space model is highly time consuming. If we want to predict on scale, a good option is to use prophet of Facebook. The idea of prophet is totally different from state space model: it decomposes the time series into trend, season, and others. The prediction of prophet is quickly and easy, but be sure to check the auto-correlation of residuals, which actually often happens. One solution for the auto-correlation is, of course, use the lag of dependent variable as one of the explanatory variables. This, however, makes the prediction of prophet not applicable. 
