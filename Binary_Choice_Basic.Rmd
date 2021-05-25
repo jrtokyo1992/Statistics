@@ -1,0 +1,137 @@
+---
+title: 'Binary Choice Model'
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 2
+     fig_width: 6
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Binary Choice:Basic 
+## Probit Model
+It is always easy to start from the micro-foundation of the model:
+<p> whether you choose 1 or 0 is based on the following mechanism: if 
+    $$
+    y^*_i={x'}_i\beta +\epsilon_i>0
+    $$
+    then choose $y_i=1$. otherwise choose $y_i=0$. $\epsilon_i$ follows $N(0, \sigma^2)$
+    </p>
+Therefore we have the formula
+$$
+pr(y_i=1|x_i)= pr(y^*_i>0|x_i)=pr({x'}_i\beta +\epsilon_i>0|x_i)=pr(\epsilon_i>-{x'}_i\beta|x_i)
+$$
+$$
+= pr(\frac{\epsilon_i}{\sigma}>-\frac{{x'}_i\beta}{\sigma}|x_i)= \Phi(\frac{{x'}_i\beta}{\sigma}) \tag{1}
+$$
+in which the last equation applies the fact that $\epsilon_i$ is symmetric distributed.The likelihood function for individual $i$ is therefore 
+$$
+{\left(\Phi(\frac{{x'}_i\beta}{\sigma})\right)}^{d_i}{\left(1-\Phi(\frac{{x'}_i\beta}{\sigma})\right)}^{1-d_i}
+$$
+We can then estimate the $\frac{\beta}{\sigma}$ using MLE (Notice that apparently we are not able to identify $\beta$ and $\sigma$ separately.)
+
+## Logistic Model
+$$pr(y=1|x) = \frac{exp(x\beta)}{1+exp(x\beta)}$$
+And apply the MLE. 
+
+## Setting the threshold
+We can see here that the after estimation, we can estimate the parameters, and the fitted probability for each individual to be $y =1$. 
+$$\hat{pr}(x) = \Phi(x\hat{\beta}),\quad or \quad \hat{pr}(x) = \frac{exp(x\hat{\beta})}{1+exp(x\hat{\beta})}$$
+However, in order to do the classification, we need to 'set' a threshold of the probability, above which we classify an individual into $y=1$. Estimation of the model does not automatically produce this threshold, so we need to the find a proper one. How to find it?
+
+The threshold depends on how we treat the the false positive rate ($\hat{y} =1$ but $y = 0$) and the false negative rate ($\hat{y} = 0$ but $y = 1$.). The can define a 'loss', which is a weighted average of these two rates, and choose a threshold that minimize this loss. 
+
+This idea is closely related to the idea of the ROC curve. Defined 'sensitivity' as the proportion of true $y=1$ classified as such , and 'Specificity' as proportion of true $y=0$ classified as such. For a given estimated model, by choosing different thresholds, we can plot a sensitivity- (1- specificity) curve (of course, we can do it for both IS and OOS). sensitivity is the y-axis, while the (1-specificity) is the x-axis. In this curve, we want the point to be as up-left as possible.
+
+# Probit model with Heteroskasticity
+Now we assume $\epsilon_i$ follows $N(0, \sigma^2_i)$. Furthermore, following the typical practice of modeling the heteroskedasticity, we assume $\sigma^2_i = e^{z'_i \gamma}$. plug this into (1) we have 
+$$
+pr(y_i=1|x_i)= \Phi(\frac{{x'}_i\beta}{\sigma_i})= \Phi (\frac{{x'}_i\beta}{\sqrt{e^{z'_i \gamma}} })
+$$
+There the likelihood function for individual $i$ is 
+$$
+{\left(\Phi(\frac{{x'}_i\beta}{\sqrt{e^{z'_i \gamma}}})\right)}^{d_i}{\left(1-\Phi(\frac{{x'}_i\beta}{\sqrt{e^{z'_i \gamma}}})\right)}^{1-d_i}
+$$
+Now we can estimate the $\gamma$ and $\beta$. After estimating we get the estimation of $\gamma$, we can test the null hypothesis $\gamma =0$ (how?). If we reject this null hypothesis, then we think that we should keep the heteroskedasticity.
+
+# Binary Choice Model with Asymmetrical Extreme Value Distribution 
+## Basic motivation: unbalanced data
+A close examination of the the mle gives 
+$$
+L(\beta)= \sum_{i=1}^{N}{d_i\log{\left(\Phi(\frac{{x'}_i\beta}{\sigma})\right)} + (1-d_i)\log{\left(1-\Phi(\frac{{x'}_i\beta}{\sigma})\right) } }
+$$
+The idea of mle here is to find a threshold (which is a $-\beta x$, i.e., a linear combination of explanatory variables ) (when $\epsilon$ is above this threshold, choose $y=1$, otherwise choose $y=0$) to maximize the 'sum' of the possibility of each individual.
+<p>Fix the distribution of $\epsilon$. when you raise the threshold, it(a) increases the possibility of choosing $y=0$(i.e., increase the likelihood of those samples with $y=0$) but (b)reduces the probability of choosing $y=1$ (i.e., reduce the likelihood of those samples with $y=1$),since $\epsilon$ have to be even larger to get over the threshold. Therefore, to maximize the over-all likelihood, the $\beta$ should not be too large due to (b)</p>
+<p> Now, however, consider a situation where most of the individuals are 0 and only a few are 1 (due to some exogenous reasons). What happens to the mle? The negative effect of(b) on overall likelihood now becomes pretty small, since there are only a few individuals with $y=1$. Therefore,to maximize the overall likelihood, the estimated threshold could be quite high, higher than the ones under cases where there are more $y=1$ in the sample.  </p>
+<p>The above reasoning implies that too few $y=1$ may well lead to a systematic higher estimation of the threshold.(i.e., higher than what it really should be.) Chenqiang (2014) provides another intuitive explanation. </p>
+
+## Correction of such bias
+### put more weight on the minor
+This a natural way to deal with this. By adding more weight to the minor sample.. (but how?)
+
+### set an alternative distribution of $\epsilon$
+Instead of the standard case of binary choice model in which the error term follows logit distribution or normal distribution (both are symmetric), here we assume
+$$
+pr(y_i=1 |x_i)=pr(\epsilon_i>-\beta x_i |x_i)= 1-e^{-e^{\beta x_i}} 
+$$
+A property of this function is that, when $\beta x_i$ increases(declines), $pr(y_i=1 |x_i)$ goes to 1 (0), but the speed of going to 1 is higher than that in the normal or logit distribution. <b>This means, for the given sample set, if you increase the threshold $-\beta x$ by a little amount, (i.e., reduce $\beta x_i$),  the marginal decline of $pr(y_i=1 |x_i)$ will be 'large'. the marginal decline of the likelihood of those sample with $y_i=1$ would be 'large'.</b> faced with this, the optimal level threshold would be small than that under the normal distribution.
+
+# Binary Choice with Endogenous variables
+If we are familiar with the textbook the specification of the endogeneity problem, we can easily write down the following framework
+$$
+y^*_1= y'_2\beta+ u,\quad y_2 = z'\gamma + v
+$$
+$y_1=1$ if $y^*_1 >0$, and $y_1=0$ if $y^*_1 <0$.Assume that $u$ and $v$ are correlated unobservable terms (joint normal distribution with $\sigma_u$,$\sigma_v$,$\rho$), and $\sigma_u = 1$. Also assume that $cov(z,u)=0$,$cov(z,v)=0$. Of course,if $\rho \ne 0$, we can see here that $y'_2$ is an endogenous variable, since $cov(y_2, u)=cov( z'\gamma + v, u)=cov(v,u)\ne 0$
+
+## Method 1 : MLE
+Intuitive we can estimate the $\beta$ using mle, incorporating $y_1$ and $y_2$.
+$$
+pr(y_1 =1, y_2 = y )= pr (y_1 =1 | y_2 = y)pr( y_2 = y )
+$$
+$$
+=pr (u>-y'_2\beta | y_2 = y)f( y_2 = y )
+$$
+$$
+=pr (u>-y'_2\beta | v= y-z'\gamma  )f_v( y-z'\gamma )
+$$
+It is easy to calculate this two terms given the joint distribution of $u$ and $v$.\
+
+## Method 2: Control Function Approach: two step
+See the note on Control Function Approach
+
+# Bavariate Binary Choice Model
+Sometimes, people make two choices. Suppose you are a patient. You make choice on whether to go to see the doctor. You also make choices on whether to get treatment at the hospital. Apparently these two choices are related: if you are willing to get treatment at the hospital, then you may also want to go to see the doctor. Now see the following framework, where an individual makes choice on two variables, $y_1$ and $y_2$
+$$
+y^*_1 = x'_1\beta_1 +\epsilon_1, \quad y^*_2 = x'_2\beta_2 +\epsilon_2
+$$
+and assume $y_1=1$ if $y^*_1 >0$, and $y_1=0$ if $y^*_1 <0$. The same for 2. 
+$$
+\left[\begin{array}{c}
+            \epsilon_1 \\
+            \epsilon_2 \\
+        \end{array}\right] \sim \quad   
+        N
+        \left[\begin{array}{cc}
+            \left[\begin{array}{c}
+            0 \\
+            0 \\
+        \end{array}\right] ,
+            \left[\begin{array}{cc}
+            1,\rho \\
+            \rho,1 \\
+        \end{array}\right]  \\   
+        \end{array}\right] 
+$$
+It is easy to see that when$\rho=0$, we can separately estimate the two models. otherwise, it is more efficient (?why?) to estimate two models jointly
+$$
+pr(y_1 = 1, y_2 = 1)= pr(  \epsilon_1>-x'_1\beta_1, \epsilon_2>-x'_2\beta_2)= 
+$$
+$$
+pr(  \epsilon_1<x'_1\beta_1, \epsilon_2<x'_2\beta_2)= \Phi(x'_1\beta_1,x'_2\beta_2,\rho)
+$$
+denote this as $p_{11}$. It is easy to write down $p_{10}$,$p_{01}$,$p_{00}$ and we can immediately write down the likelihood for each individual.we can also test hypothesis $\rho =0$ (how?)

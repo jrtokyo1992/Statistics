@@ -1,0 +1,75 @@
+---
+title: "Issues in Time Series Regression"
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 3
+     fig_width: 4.5
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setting
+Consider the following problem:
+$$y_t = \beta x_t + \eta_t$$
+In which $\eta$ is error term which is independent of the $x$. 
+
+# Issues of spurious regression 
+Be sure that $y_t$ and $x_t$ must both be stationary, i.e., they do not have unit root. Other wise, we have spurious regression. Consider the case when 
+$$y_t = y_{t-1} + u_t, \quad x_t = x_{t-1}+ v_t$$
+i.e. both $x$ and $y$ are random walks (have unit root, hence not stationary). Suppose $u$ adn $v$ are independent. Therefore $y$ and $x$ are also independent. If we regress y on x, the coefficient must be zero. But due to the reason that $y$ and $x$ are non-stationary, in general the estimation on the coefficient would be no longer zero. To see this, notice we want to estimate the $y_t = \beta x_t + \epsilon$. It is easy to see that
+$$\epsilon_t = \epsilon_{t-1} + u_t - \beta_t v_t$$
+the error term $\epsilon$ is also a random walk. <b>This is a dangerous signal: if $\epsilon$ is not ergodic stationary, then then large sample theory is invalid. Any t statistics and p value is invalid. </b>  Therefore, even if the p value of the estimator may be small and the estimator is not zero, it is not reliable.
+
+We can also shows that $\epsilon$ is random walk whenever either $x$ or $y$ is non-stationary. 
+
+Naturally, a signal for spurious regression is the non-stationary of the residual. To eliminate the spurious regression problem, difference the variables till all the variables are stationary. 
+
+# Regression with ARMA error
+Now we assume all variables are stationary so there is no issue of spurious regression. we consider :
+$$y_t = \beta x_t + \eta_t$$
+in which $$\eta_t = \rho \eta_{t-1}+ \epsilon_t, \quad |\rho|<1$$
+and $\epsilon_t$ follows a normal distribution with mean as 0. Since $|\rho|<1$, the $\eta$ is ergodic, and there is no worry about spurious regression. However, 
+If we use OLS directly, i.e., minimize $\sum^{T}_{t=1}\hat{\eta_t}^2$, although the estimation will be still consistent, but it will have large variance.The standard error and t statistics under small sample is no longer valid.(But we can still use the standard error and t statistics under large sample). To better estimate this model, we can use both MLE or OLS (by minimizing $\sum^{T}_{t=1}\hat{\epsilon_t}^2$).
+
+## MLE
+Since this model is a typical state-space model, we can use MLE to estimate it. 
+This is easy. since we know the data of all $y_t$ and $x_t$, given $\beta$, we know the series of $\eta$, i.e., $\eta_0, \eta_1, ...$. 
+Therefore we have
+$$f(\eta_0, \eta_1, ...)= f(\eta_0)f(\eta_1|\eta_0)...f(\eta_t|\eta_{t-1})...$$
+$f(\eta_t|\eta_{t-1})$ is easy to derive since we know $\eta_t = \rho \eta_{t-1}+ \epsilon_t$. From this we can construct the likelihood function for the whole series of $\eta$
+
+## OLS
+Of course it is also possible to use OLS. To realize this, we can do write
+$$\eta_t = \rho L \eta_t+ \epsilon_t$$
+in which $L \eta_t \equiv \eta_{t-1}$. Therefore we have
+$$(1-\rho L)\eta_t = \epsilon_t, \rightarrow  \eta_t = \frac{1}{1-\rho L} \epsilon_t$$
+plug this into the model we have
+$$y_t = \beta x_t + \frac{1}{1-\rho L} \epsilon_t $$
+which implies that 
+$$(1-\rho L)y_t = (1-\rho L) \beta x_t + \epsilon_t$$
+finally we have 
+$$y_t = \rho y_{t-1}+ \beta x_t - \rho \beta x_{t-1} + \epsilon_t$$
+Then we can apply OLS to this model.
+
+### Remark
+From here we can see that to estimate a model with arma error, we can use MLE in state space model. We can also turn it into a model with i.i.d error but with lag in dependent variable. This implies that these two types of specifications are related. Consider a more general case:
+$$y_t = \beta_1 y_{t-1}+ \beta_2 y_{t-2}+...+ \beta_p y_{t-p}$$
+$$+ \gamma x_t + u_t + \alpha_t u_{t-1}+ \alpha_{t-2} u_{t-2}+...+ \alpha_{t-q}u_{t-q}  \tag{1}$$
+where $u$ is i.i.d error term. This can be easily written as 
+$$\phi(L,p,\beta)y_t = \gamma x_t + \phi (L,q, \alpha) u_t$$
+in which $$\phi(L,p, \beta) \equiv 1- \beta_1 L^{-1}-\beta_2 L^{-2} -...- \beta_p L^{-p}$$. The definition for $\phi (L,q, \alpha)$ are similar. Therefore we have 
+$$y_t = \frac{\gamma}{\phi(L,p, \beta)}x_t + \epsilon_t $$
+in which 
+$$ \epsilon_t \equiv \frac{\phi (L,q, \alpha)u_t}{\phi(L,p, \beta)}$$
+and can rewritten as
+$$\epsilon_t = \beta_1 \epsilon_{t-1}+ \beta_2 \epsilon_{t-2}+...+ \beta_p \epsilon_{t-p}$$
+$$+ \gamma x_t + u_t + \alpha_t u_{t-1}+ \alpha_{t-2} u_{t-2}+...+ \alpha_{t-q}u_{t-q}\quad (ARMA) $$
+Therefore, we can turn a model with lag in dependent variable (1) into a model with ARMA error . One disadvantage of (1) is that, the $\gamma$ is some times hard to interpret : it is the effect of $x_t$ given the past $y_{t-1}$. On the other hand, the model with no lag in dependent variable but with ARIMA errors has more intuitive implication on coefficients. 
+
+Reference:
+https://robjhyndman.com/hyndsight/arimax/

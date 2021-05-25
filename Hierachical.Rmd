@@ -1,0 +1,177 @@
+---
+title: "Hierachical Model"
+output: 
+  pdf_document:
+     toc: true
+     toc_depth: 2
+     fig_width: 6
+     fig_height: 3
+     fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Motivation 
+
+Sometimes we often encounter some grouped data. For example: 
+
+- Students belong to different classes;
+- Cities belong to different provinces;
+- Stores belong to different areas.
+- Panel Data
+
+Often times, for these types of data, we have within group correlations: individuals in a group are actually correlated. 
+
+# Basic framework 
+suppose the following hierarchical DGP:
+$$y_{ik} \sim p_y(\theta_k), \quad \theta_k \sim p_{\theta}(\beta) $$
+How should we estimate this model? Denote $\Theta \equiv (\theta_1, ...\theta_K)$ and $\mathbf{y} \equiv (y_1,,,y_n)$ First notice 
+$$pr(\Theta, \beta| \mathbf{y}) = \frac{ pr( \mathbf{y} | \Theta, \beta) pr(\Theta | \beta)  pr(\beta) }{pr(\mathbf{y})}, \quad (1)$$
+
+
+
+## Hierachical ML
+
+Under this method, we assume $\beta$ is a determinant, and want to choose $\beta$ to maximize 
+$$pr(\beta | \mathbf{y} )\propto \int{ pr( \mathbf{y} | \Theta, \beta) pr(\Theta | \beta)  pr(\beta) d\Theta }$$
+By maximizing the above equation, we get the estimated parameter $\hat{\beta}$. This method assumes that we do not care about $\Theta$, but we can estimate it using :
+$$\hat{\Theta} = {argmax}_{\Theta} pr(\Theta, \hat{\beta}| \mathbf{y}) $$
+(question: why don't we directly maximize (1) directly?)
+
+## Bayesian Estimation 
+
+Under this method, we regard $\beta$ as following some prior distribution, and do mcmc sampling directly according to (1). In other words, we estimate both $\Theta$ and $\beta$
+
+
+# Application 
+## Random Intercept Model
+
+Consider the following DGP:
+$$y_{ik} = x_{ik}\beta + \alpha_{k} + \epsilon_{ik} , \quad \epsilon_{ik} \sim N(0,\sigma^2_\epsilon)$$
+in which $ik$ means the $i$ individual in group $k$. $\alpha_k$ are constants. DGP says that we believe that each group has its own intercept.
+
+- We want to estimate $\beta, \alpha_1, ....\alpha_K$. Then we can explicitly estimate by using dummy variables. 
+- We only care about $\beta$. In the case of panel data, we can subtract each individual by the average of the group it belongs to, so $\alpha_k$ disappear.
+
+But we can also regard $\alpha_k$ as unobservable components: different groups have different intercepts, but these intercepts come from a distribution. That is,for example, for all $k$
+$$\alpha_k \sim N(0, \sigma^2_\alpha)$$
+
+One advantage for this setting is that we can know better about the nature of the intercepts by estimating $\mu$ and $\sigma$.Also, we are estimating less parameters when we assume that $\alpha_k$ is random.
+
+
+It is natural that we want to estimate $\sigma_\alpha$, $\sigma_\epsilon$, $\beta$.
+
+Let's walk through the process of deriving the likelihood function. This is of course applicable for other distribution cases. 
+$$pr(\sigma_\epsilon,\sigma_\alpha, \beta | \mathbf{y}, \mathbf{x}) \equiv \int{pr(\sigma_\epsilon, \beta, \alpha_1,,,,\alpha_K | \mathbf{y}, \mathbf{x})d (\alpha_1, \alpha_2,..\alpha_K)   }$$
+$$ \propto
+\int_{\alpha_1, \alpha_2,..\alpha_K}{pr(\mathbf{y} | \mathbf{x},\sigma_\epsilon, \sigma_\alpha,\beta, \alpha_1,,,,\alpha_K) pr(\alpha_1,....\alpha_K | \sigma_\alpha)d (\alpha_1, \alpha_2,..\alpha_K)   }
+$$
+$$
+= \int_{\alpha_1, \alpha_2,..\alpha_K}{ \left(\prod_{k=1}^{K} {pr(\mathbf{y_k} | \mathbf{x_k},\sigma_\epsilon, \sigma_\alpha,\beta, \alpha_k)} \right)  \left( \prod_{k=1}^{K} {pr(\alpha_k | \sigma_\alpha) }\right) d (\alpha_1, \alpha_2,..\alpha_K)   }
+$$
+$$
+= \prod_{k=1}^{K} {  \int_{\alpha_k}{  pr(\mathbf{y_k} | \mathbf{x_k},\sigma_\epsilon, \sigma_\alpha,\beta, \alpha_k)   pr(\alpha_k | \sigma_\alpha)     d \alpha_k } }
+= \prod_{k=1}^{K} {    pr(\mathbf{y_k} | \mathbf{x_k},\sigma_\epsilon, \sigma_\alpha,\beta)      } \quad(2)
+$$
+The third line holds because individuals of different groups are independent. What is the $pr(\mathbf{y_k} | \mathbf{x_k},\sigma_\epsilon, \sigma_\alpha,\beta)$, then?
+Suppose there are only two individuals, $i$ and $j$, in group $k$. What is the likelihood function for this group? it is
+$$pr(\alpha_k+ \epsilon_{ik} = y_{ik}- x_{ik}\beta, \alpha_k+ \epsilon_{jk} = y_{jk}- x_{jk}\beta)$$
+We need to know the joint distribution of $\alpha_i+ \epsilon_{ik}$ and $\alpha_k+ \epsilon_{jk}$ if we want to know write the expression for this likelihood. It is not difficult. Define $s_{ik} \equiv \alpha_k + \epsilon_{ik}$, $s_{jk} \equiv \alpha_j + \epsilon_{jk}$.  We immediately have 
+$$cov(s_{ik},s_{jk}) = \sigma^2_\alpha , \quad var(s_{ik}) = var(s_{jk}) = \sigma^2_\alpha + \sigma^2_\epsilon$$
+Therefore, For given group $k$, the error term of individuals in this group follows a normal distribution, with the covariance matrix as:
+
+- The diagonal elements are all $\sigma^2_\alpha$
+- The remaining elements are all $\sigma^2_\alpha + \sigma^2_\epsilon$.
+
+Having this, we can easily write down $pr(\mathbf{y_k} | \mathbf{x_k},\sigma_\epsilon, \sigma_\alpha,\beta)$ for each $k$. We then choose the $\sigma_\epsilon, \sigma_\alpha, \beta$ that maximize the whole likelihood function (2).
+
+On the other hand, if we want to do the bayesian estimation, we sample from 
+$$pr(\sigma_\epsilon,\sigma_\alpha, \beta, \alpha_1,,,\alpha_K | \mathbf{y}, \mathbf{x}) \propto \left(\prod_{k=1}^{K} {pr(\mathbf{y_k} | \mathbf{x_k},\sigma_\epsilon, \sigma_\alpha,\beta, \alpha_k)} \right)  \left( \prod_{k=1}^{K} {pr(\alpha_k | \sigma_\alpha) }\right) prior(\beta, \sigma_\alpha, \sigma_\epsilon)$$
+in which 
+$$pr(\mathbf{y_k} | \mathbf{x_k},\sigma_\epsilon, \sigma_\alpha,\beta, \alpha_k) = 
+\prod_{i = 1}^{n_k}{pr(\epsilon_{ik} =  y_{ik}- x_{ik}\beta - \alpha_k)}$$
+
+## Random coeffieicnt plus random intercept model
+
+Similar to random intercept model, we also have random coefficient model, i.e., there is difference in the effects of explanatory variable on outcome variables across groups. 
+$$y_{ik} = x_{ik}(\beta + u_k)  + \alpha_k + \epsilon_{ik}$$
+in which $\epsilon \sim (0, \sigma_\epsilon)$
+and 
+$$ \begin{pmatrix}
+u_k \\ \alpha_k
+\end{pmatrix}
+\sim N
+\begin{pmatrix}
+\begin{pmatrix} 0\\0 \end{pmatrix},
+\begin{pmatrix} \sigma^2_{u} & \rho \sigma_u \sigma_\alpha \\ \rho \sigma_u \sigma_\alpha & \sigma^2_{\alpha} \end{pmatrix}
+\end{pmatrix}$$
+Following the same reasoning in the previous section, for two individuals $i,j$ in the same group $k$, the likelihood function is 
+$$pr(u_k x_{ik} + \alpha_k + \epsilon_{ik} = y_{ik} - \beta x_{ik}, u_k x_{jk} + \alpha_k + \epsilon_{jk} = y_{jk} - \beta x_{jk})$$
+Define $$s_{q} \equiv u_k x_{qk} + \alpha_k + \epsilon_{qk},\quad q = i,j $$
+We immediately have 
+$$cov(s_{ik}, s_{jk}) = cov(u_k x_{ik} + \alpha_k +\epsilon_{ik}, u_k x_{jk} + \alpha_k + \epsilon_{jk}) = var(\alpha_k)+ x_{ik}x_{jk} var(u_k) + (x_{ik}+ x_{jk})cov(u_k, \alpha_k) $$
+$$= \sigma_\alpha^2 + x_{ik}x_{jk} \sigma^2_u + (x_{ik}+ x_{jk}) \rho \sigma_u  \sigma_\alpha$$
+and 
+$$var(s_{ik}) = var(u_k x_{ik} + \alpha_k + \epsilon_{ik}) = var(u_k x_{ik} + \alpha_k)+var(\epsilon_{ik})$$
+$$= x^2_{ik} \sigma^2_u + \sigma^2_\alpha + x_{ik} \rho \sigma_u \sigma_\alpha + \sigma^2_\epsilon$$
+
+# Examples: 
+We now consider a case of poisson data generation 
+$$r_k \sim N(0, \sigma^2_r), \quad \tau_k \sim N(0, \sigma^2_\tau)$$
+$$y_{ik}\sim Poisson(e^{\beta_0+ (\beta_1 + \tau_k)x_{ik} + r_k})$$
+## preparation
+
+We use a fishing data as an example. Here, $x$ is temperate, $y$ is fish_num
+```{r, message=FALSE,warning=FALSE,eval=TRUE}
+library(brms)
+library(rstan)
+library(lme4)
+library(dplyr)
+df_raw =read.csv("./fish.txt", sep=",")%>%
+  mutate(weather = ifelse (weather == 'sunny', 1, 0))
+head(df_raw)
+```
+
+
+## Bayeisn Estimation
+Using the brms packages, we can easily do estimation. Several things to notice:
+  
+  - The formula expression may seem not that the intuitive. Look at the formula below.
+the '1+ temperature' indicates we add the constant and temperature into the model as explanatory variables. $(temperature| weather)$ means that <b>we assume that across the levels of weather, both the coefficients of temperature and and the intercept are different, and both randomly taken out from some distributions. </b> If we only incorporate random intercept, then use $(1| weather)$. (It seems to say that actually we cannot assume ONLY random coefficient?). 
+
+- $(temperature| weather)$ and $(temperature || weather)$ are slightly different. The former admits that $\tau_k$ and $r_k$ are correlated, while the latter does not.
+
+- For other usages related to brms, check my another notes 'Bayesian Estimation with brms', which talks about other post-estimation analysis
+
+```{r,message=FALSE,warning=FALSE,eval=TRUE}
+bayesian_res = brm (fish_num ~ 1 + temperature + ( temperature | weather),
+                    data= df_raw,
+                    family = poisson(),# default is gaussian 
+                    prior   = NULL, 
+                    seed = 1, 
+                    chains = 4,
+                    iter = 4000,
+                    warmup = 2000)
+```
+
+```{r,message=FALSE,warning=FALSE,eval=TRUE}
+summary(bayesian_res)
+```
+
+## MLE 
+Use lme4 Package to realize the MLE estimation. The command is super simple. check the the package documentation for more details. 
+```{r, results='hide',message=FALSE,warning=FALSE,eval=FALSE}
+mle_res <- lmer(fish_num ~ 1 + temperature + ( 1 | weather),
+                data =  df_raw,
+                family = poisson(), # how is y generated
+                REML      = FALSE,
+                na.action = na.omit)
+```
+# Reference 
+- http://ryotamugiyama.com/wp-content/uploads/2016/01/hierarchicalbeyes.html#three-level-multi-level-model-3
+
+- https://idiom.ucsd.edu/~rlevy/pmsl_textbook/chapters/pmsl_8.pdf
+
+- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2601029/#FD5
